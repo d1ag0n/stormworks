@@ -1,7 +1,7 @@
 -- Nuke Drone Pilot
 -- Numeric Input
---  5 Desired Position X   = POS.x
---  6 Desired Position Y   = POS.y
+--  5 Desired Position X   = POS.x   8748
+--  6 Desired Position Y   = POS.y   7051
 --  7 Desired Altitude     = ALT
 --  8 Altitude Front Left  = AFL
 --  9 Altitude Front Right = AFR
@@ -19,6 +19,7 @@
 --  5 = left/right accel
 --  6 = front/back accel
 --  7 = direction
+--  8 = distance
 
 -- CONSTANTS
 -- ACC = acceleration
@@ -27,11 +28,11 @@
 -- pi4 = pi/4
 -- AFX  = altitude factor
 function init()
-  ACC = 0.6
+  ACC = 0.001
   NOR = v(0, 1)
   PI2 = math.pi * 2
   PI4 = math.pi / 4
-  AFX = 0.1
+  AFX = 0.01
   GPS = v(0, 0)
 	load()
   head = CPS
@@ -39,7 +40,7 @@ function init()
 		func = calc
 	end
 end
-gFunc = fInit
+func = init
 tick = 0
 function onTick()
   tick = tick + 1
@@ -69,17 +70,18 @@ function calc()
   
   disp = sub(POS,GPS)
   vec,dist = nor(disp)
+  sn(8,dist)
   prfv = math.sqrt(2 * ACC * clamp(dist, 0, 1000))
-	prfv = mul(vec,prfv)
-  locv = rot(sub(prfv, VEL), -CPS)
-  sn(5, locv.x)
-  sn(6, locv.y)
+	prfv = mul(vec, prfv)
+  locv = rot(sub(prfv, VEL), -CPS * PI2)
+  sn(5, -locv.x)
+  sn(6, -locv.y)
   
-  if dist > 10 then
+  if dist > 20 then
     head = CPS
     bow = rot(NOR, CPS * PI2)
     port = perp(bow)
-    angle = ang(bow, vec) / twoPi
+    angle = ang(bow, vec) / PI2
     if dot(port, vec) < 0 then
       angle = -angle
     end
