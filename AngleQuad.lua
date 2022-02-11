@@ -1,30 +1,36 @@
 -- Nuke Drone Pilot
 -- Numeric Input
---  5 Desired Position X   = POS.x   8748
---  6 Desired Position Y   = POS.y   7051
---  7 Desired Altitude     = ALT
---  8 
---  9 
--- 10 
+--  1 = Front Angle FA
+--  2 = Left Angle LA
+--  3 = Down Angle DA
+--  4 = Altitude = ELV
+--  5 = GPS X
+--  6 = GPS Y
+--  7 = Compass CPS
+--  8 = Desired Altitude = ALT
+--  9 = Desired X
+-- 10 = Desired Y
 -- 11 
--- 12 Compass              = CPS
--- 13 GPS x                = GPS.x
--- 14 GPS y                = GPS.y
+-- 12 
+-- 13 
+-- 14 
 
 -- Numeric Output
---  1 = 
---  2 = 
---  3 = 
---  4 = rudder
---  5 = left/right accel
---  6 = front/back accel
---  7 = direction
---  8 = distance
---  9 = preferred velocity
--- 10 = actual velo
+--  1 = FL
+--  2 = FR
+--  3 = BL
+--  4 = BR
+--  5 = 
+--  6 = 
+--  7 = 
+--  8 = 
+--  9 = 
+-- 10 = 
+-- 11 = 
+-- 12 = 
 
 -- Bool Output
--- 1 = steer compass
+-- 1 = 
 
 -- CONSTANTS
 -- ACC = acceleration
@@ -34,10 +40,11 @@
 -- AFX  = altitude factor
 function init()
   ACC = 0.001
+  ALT = 0
+  POS = v(0, 0)
   NOR = v(0, 1)
   PI2 = math.pi * 2
   PI4 = math.pi / 4
-  AFX = 0.01
   GPS = v(0, 0)
 	load()
   head = CPS
@@ -45,67 +52,54 @@ function init()
 		func = calc
 	end
 end
-func = init
-tick = 0
 function onTick()
   tick = tick + 1
 	func()
 end
 function load()
-  gps = GPS
-  GPS = v(gn(13), gn(14))
-  x = gn(5)
-  y = gn(6)
-  if math.abs(x) > 1 then
-    POS = v(x,y)
+  FA=gn(1)
+  LA=gn(2)
+  DA=gn(3)
+  ELV=gn(4)  
+  gps=GPS
+  GPS=v(gn(5),gn(6))
+  VEL=sub(GPS,gps)
+  CPS=gn(7)
+  ALT = ALT + ((gn(8) - ALT) * 0.01)	
+  x = gn(9)
+  if x ~= 0 then
+    POS = v(x,gn(10))
   else 
     POS = GPS
   end
-	ALT = gn(7)
-  CPS = gn(12)
-  
-  
-	VEL = sub(GPS, gps)
-  vec,dist = nor(VEL)
-  sn(10,dist)
 end
 function calc()
-	load()  
-  disp = sub(POS,GPS)
-  vec,dist = nor(disp)
-  sn(8,dist)
-  prfv = math.sqrt(2 * ACC * clamp(dist, 0, 1000))
-  sn(9, prfv)
-	prfv = mul(vec, prfv)
+	load()
+  disp = sub(POS, GPS)
+  vec, dist = nor(disp)
+  
+  if dist < 10 then
+    dist = dist * 0.01
+  end
+  prfv = math.sqrt(2 * ACC * clamp(dist, 0, 1000))    
+  prfv = mul(vec, prfv)
   locv = rot(sub(prfv, VEL), -CPS * PI2)
   
-  velmul = -10
-  if dist < 40 then
-    velmul = -0.1
-  end
   
-  sn(5, clamp(locv.x*velmul,-1,1))
-  sn(6, clamp(locv.y*velmul,-1,1))
+  f = 10
+  c = 3
+  x = clamp(locv.x * f, -c, c)
+  y = clamp(locv.y * f, -c, c)
+  f = 0.001
+  FL = (FL - ALT - x + y) * f
+  FR = (FR - ALT + x + y) * f
+  BL = (BL - ALT - x - y) * f
+  BR = (BR - ALT + x - y) * f
   
-  if dist > 30 then
-    head = CPS
-    bow = rot(NOR, CPS * PI2)
-    port = perp(bow)
-    angle = ang(bow, vec) / PI2
-    if dot(port, vec) < 0 then
-      angle = -angle
-    end
-    sb(1, false)
-  else 
-    angle = (head - CPS + 0.5) % 1 - 0.5
-    sb(1, true)
-	end
-  if locv.y < 0 then
-    sn(8, -angle)
-  else
-    sn(8, angle)
-  end
-	sn(7, angle)
+  sn(1, FL)
+  sn(2, FR)
+  sn(3, BL)
+  sn(4, BR)
 end
 function v(x,y)return{x=x,y=y}end
 function dot(a,b)return a.x*b.x+a.y*b.y end
@@ -123,8 +117,10 @@ function ang(a,b)if zero(a)or zero(b)then return 0,0 end dp=dot(a,b)return math.
 function perp(a)return v(-a.y, a.x)end
 function rot(a,r)ca=math.cos(r)sa=math.sin(r)return v(a.x*ca-a.y*sa,a.x*sa+a.y*ca)end
 function clamp(a,b,c)return math.max(math.min(a,c),b)end
+function finite(x) return x==x end
 gn = input.getNumber
 gb = input.getBool
 sn = output.setNumber
 sb = output.setBool
-function finite(x) return x==x end
+func = init
+tick = 0
