@@ -50,10 +50,15 @@
 -- VL = local velocity vector
 -- LT = last target
 -- GL = last gps
+-- ACC = MAX ACCELERATION
+-- MTA = MAX TILT ANGLE
+ACC=7
+MTA=0.18
 function onDraw()
   dt(0,0,fmt("First: Alt %.1f - x%.1f y%.1f - %.2f",FA,FG.x,FG.y,FC))
   dt(0,6,fmt("active: %s PP %.2f PY %.2f PR %.2f PE %.2f",tostring(A),PP,PY,PR,PE))
-  dt(0,12,fmt("TL: %.2f TF %.2f velo %.2f",TL,TF,velo*60))
+  dt(0,12,fmt("TL: %.2f TF %.2f loct x%.2f y%.2f",TL,TF,loct.x,loct.y))
+  dt(0,18,fmt("D: x%.2f y%.2f - VL: x%.2f y%.2f",D.x,D.y,VL.x,VL.y))
 end
 function onTick()
   a=gb(1)
@@ -68,23 +73,34 @@ function onTick()
   if zero(FG) and not zero(G) then FG=G LT=G end
   if a then
     T=v(gn(8),gn(9))
+    LT=T
     if zero(T) then LT=G T=LT end
-    T=rot(sub(T,G),CP*P2)
+    loct=rot(sub(G,T),CP*P2)
     HD=rot(NR,CP*P2)
     PT=perp(HD)
-    VL=rot(sub(G,GL),CP*P2)
-    velo=len(VL)
+    VL=mul(rot(sub(GL,G),CP*P2),60)
     TU=gn(12)
     su=sin(TU)
     TF=tilt(gn(11),su)
     TL=tilt(gn(13),su)
     if not A then DC=CP DA=AL A=a end
-    PP=TF+clamp(VL.y*5,-0.1,0.1)
-    PY=wrap(CP-FC)
-    PR=-TL+clamp(VL.x*5,-0.1,0.1)
+    
+    sd=50
+    dx = abs(loct.x)
+    sx = clamp(dx/sd,0.2,1)
+    dx = sqrt(2 * dx * ACC) * sx
+    
+    dy = abs(loct.y)
+    sy = clamp(dy/sd,0.2,1)
+    dy = sqrt(2 * dy * ACC) * sy
+    
+    D = v(dx * sign(loct.x) - VL.x, dy * sign(loct.y) - VL.y)
+    PP=(TF+accel(D.y))*10
+    PY=wrap(CP-FC)*4
+    PR=(accel(D.x)-TL)*10
     ale=FA-AL
     aale=math.abs(ale)
-    PE=clamp(ale*.05,-5,5)
+    PE=clamp(ale*.5,-5,5)
   else
     if A then LT=T end
     PP=gn(1)
@@ -98,6 +114,7 @@ function onTick()
   sn(3,PR)
   sn(4,PE)
 end
+function accel(n) return clamp(MTA*clamp(n/ACC,-1,1),-MTA,MTA) end
 function v(x,y)return{x=x,y=y}end
 function dot(a,b)return a.x*b.x+a.y*b.y end
 function len2(a)return a.x*a.x+a.y*a.y end
@@ -115,7 +132,16 @@ function wrap(a) return (a%1+1.5)%1-0.5 end
 function sign(n) return n>=0 and 1 or-1 end
 function eq(a,b)return a.x==b.x and a.y==b.y end
 function tilt(n,su)return math.atan(sin(n*P2),su)/P2 end
-velo=0
+m=math
+abs=m.abs
+sin=math.sin
+sqrt=m.sqrt
+PI=m.pi
+P2=PI*2
+P4=PI/4
+VL=v(0,0)
+loct=v(0,0)
+D=v(0,0)
 AL=0
 LA=0
 TL=0
@@ -132,10 +158,6 @@ i=input
 gn=i.getNumber
 gb=i.getBool
 sn=output.setNumber
-PI=math.pi
-P2=PI*2
-P4=PI/4
 fmt=string.format
 PY=0
-sin=math.sin
 dt=screen.drawText
