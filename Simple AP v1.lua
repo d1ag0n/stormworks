@@ -1,7 +1,7 @@
 -- Simple AP v1
 -- Numeric Input
---  1 = Compas        = CPS
---  2 = GPS X   = GPSF
+--  1 = Compas      = CPS
+--  2 = GPS X       = GPS
 --  3 = GPS Y
 --  4 = Target X    = TGT
 --  5 = Target Y
